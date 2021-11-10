@@ -8,8 +8,7 @@ def get_python_version():
     available version of python.
     """
     import platform
-    versions = {'2': '2.7.15',
-                '3': '3.7.4'}
+    versions = {'3': '3.8'}
     return versions[platform.python_version_tuple()[0]]
 
 
@@ -17,28 +16,26 @@ def get_python_version():
 @conda_base(python=get_python_version())
 class IMDB_BiLSTM(FlowSpec):
 
-    @conda(libraries={'tensorflow': '2.7.0',
-                      'numpy': '1.21.1'})
+    @conda(libraries={'tensorflow': '2.6.0'})
     @step
     def start(self):
         import numpy as np
         from tensorflow import keras
         from tensorflow.keras import layers
-
+        import logging
         self.max_features = 20000  # Only consider the top 20k words
         self.maxlen = 200  # Only consider the first 200 words of each movie review
-
+        logging.info('start finished')
         self.next(self.init_neural_network)
 
     @retry(times=1)
-    @conda(libraries={'tensorflow': '2.7.0',
-                      'numpy': '1.21.1'})
+    @conda(libraries={'tensorflow': '2.6.0'})
     @step
     def init_neural_network(self):
         import numpy as np
         from tensorflow import keras
         from tensorflow.keras import layers
-
+        import logging
         # Input for variable-length sequences of integers
         inputs = keras.Input(shape=(None,), dtype="int32")
         # Embed each integer in a 128-dimensional vector
@@ -50,17 +47,17 @@ class IMDB_BiLSTM(FlowSpec):
         outputs = layers.Dense(1, activation="sigmoid")(x)
         self.model = keras.Model(inputs, outputs)
         self.model.summary()
+        logging.info('init_neural_network finished')
         self.next(self.load_data)
 
     @retry(times=1)
-    @conda(libraries={'tensorflow': '2.7.0',
-                      'numpy': '1.21.1'})
+    @conda(libraries={'tensorflow': '2.6.0'})
     @step
     def load_data(self):
         import numpy as np
         from tensorflow import keras
         from tensorflow.keras import layers
-
+        import logging
         (self.x_train, self.y_train), (self.x_val, self.y_val) = keras.datasets.imdb.load_data(
             num_words=self.max_features)
 
@@ -71,15 +68,17 @@ class IMDB_BiLSTM(FlowSpec):
         # this will truncate sequences longer than 200 words and zero-pad sequences shorter than 200 words.
         self.x_train = keras.preprocessing.sequence.pad_sequences(self.x_train, maxlen=self.maxlen)
         self.x_val = keras.preprocessing.sequence.pad_sequences(self.x_val, maxlen=self.maxlen)
+        logging.info('load_data finished')
         self.next(self.train)
 
     @retry(times=1)
-    @conda(libraries={'tensorflow': '2.7.0',
-                      'numpy': '1.21.1'})
+    @conda(libraries={'tensorflow': '2.6.0'})
     @step
     def train(self):
+        import logging
         self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
         self.model.fit(self.x_train, self.y_train, batch_size=32, epochs=2, validation_data=(self.x_val, self.y_val))
+        logging.info('train finished')
         self.next(self.end)
 
     @step
